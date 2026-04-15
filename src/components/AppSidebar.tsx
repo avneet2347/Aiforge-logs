@@ -27,6 +27,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { signOut, user } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -66,6 +67,19 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <div className="mt-auto border-t border-border/50 p-3">
+        {!collapsed && user && (
+          <p className="text-xs text-muted-foreground truncate mb-2 px-2">{user.email}</p>
+        )}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={signOut} className="hover:bg-destructive/10 hover:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              {!collapsed && <span>Sign Out</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </div>
     </Sidebar>
   );
 }
