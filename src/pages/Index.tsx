@@ -1,16 +1,35 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { MetricsRow } from "@/components/dashboard/MetricsRow";
+import { LogStream } from "@/components/dashboard/LogStream";
+import { AnomalyPanel } from "@/components/dashboard/AnomalyPanel";
+import { LogVolumeChart } from "@/components/dashboard/LogVolumeChart";
+import { AnomalyTimeline } from "@/components/dashboard/AnomalyTimeline";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Real-time log intelligence & anomaly detection</p>
+        </div>
+
+        <MetricsRow />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <LogVolumeChart />
+          <AnomalyTimeline />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <LogStream />
+          </div>
+          <AnomalyPanel />
+        </div>
+      </div>
+    </DashboardLayout>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
