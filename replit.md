@@ -15,7 +15,7 @@ AI-powered log intelligence and observability dashboard built as a data-visualiz
 | `/` | Operational overview | summary, log-volume, anomaly-trend, mttd-trend, severity-distribution, top-services, ingest-throughput |
 | `/anomalies` | Detected anomalies stream | listAnomalies + filters |
 | `/patterns` | K-Means/BERT pattern cards | listPatterns |
-| `/alerts` | Intelligent alerts + drawer with root cause | listAlerts, getAlert |
+| `/alerts` | Intelligent alerts + tabbed drawer (Runbook / Root cause / Logs) | listAlerts, getAlert, getAlertRunbook |
 | `/predictions` | Prophet failure forecasts | listPredictions |
 | `/services` | Service health grid | listServices |
 | `/logs` | Interactive log explorer | listLogs (level, service, search, limit) |
@@ -36,6 +36,8 @@ AI-powered log intelligence and observability dashboard built as a data-visualiz
 - Diurnal log volume patterns over the last 24h.
 - Anomalies tagged with algorithm (Isolation Forest, K-Means cluster shift, BERT semantic delta, Prophet residual).
 - Alert detail includes root cause hop chain and related logs.
+- Incident-response runbook engine: each alert has a `GET /api/alerts/{id}/runbook` endpoint returning a category-aware (latency / errors / capacity / auth) sequence of steps (kind: check / command / decision / fix / verify / communicate), each with description, suggested shell command, expected outcome, and ETA — plus an auto-generated markdown postmortem draft.
+- Frontend runbook drawer: checkbox-tracked progress bar, copy-to-clipboard for commands, expandable postmortem markdown with copy button, "Ready to file" badge once all steps are complete.
 - Predictions include forecast points with confidence bands (actual + forecast + upper/lower).
 
 ## Codegen
