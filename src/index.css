@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 231 33% 13%;
+    --foreground: 210 40% 96%;
+
+    --card: 224 33% 17%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 224 33% 17%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 142 69% 58%;
+    --primary-foreground: 231 33% 10%;
+
+    --secondary: 263 62% 71%;
+    --secondary-foreground: 231 33% 10%;
+
+    --muted: 224 25% 22%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 263 62% 71%;
+    --accent-foreground: 231 33% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 224 20% 24%;
+    --input: 224 20% 24%;
+    --ring: 142 69% 58%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 231 40% 10%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 142 69% 58%;
+    --sidebar-primary-foreground: 231 33% 10%;
+    --sidebar-accent: 224 25% 18%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 224 20% 20%;
+    --sidebar-ring: 142 69% 58%;
+
+    /* Custom tokens */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --success: 142 69% 58%;
+    --info: 210 100% 60%;
+    --glow-primary: 0 0% 100% / 0.05;
+    --gradient-aurora: linear-gradient(135deg, hsl(263 62% 71% / 0.3), hsl(142 69% 58% / 0.2));
+    --shadow-glow: 0 0 30px hsl(142 69% 58% / 0.15);
+
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50 rounded-lg;
+  }
+  .glow-border {
+    @apply border border-primary/20 shadow-[0_0_15px_hsl(142_69%_58%/0.1)];
+  }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px hsl(142 69% 58% / 0.2); }
+  50% { box-shadow: 0 0 20px hsl(142 69% 58% / 0.4); }
+}
