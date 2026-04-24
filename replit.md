@@ -47,3 +47,4 @@ After editing `lib/api-spec/openapi.yaml`, run:
 pnpm --filter @workspace/api-spec run codegen
 ```
 to regenerate Zod schemas (`lib/api-zod`) and React Query hooks (`lib/api-client-react`).
+<!-- test -->
