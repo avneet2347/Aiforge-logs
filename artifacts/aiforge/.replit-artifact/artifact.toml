@@ -1,0 +1,31 @@
+kind = "data-app"
+previewPath = "/"
+title = "AIForge Technical Suite"
+version = "1.0.0"
+id = "artifacts/aiforge"
+router = "path"
+
+[[integratedSkills]]
+name = "data-visualization"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18570
+
+[services.development]
+run = "pnpm --filter @workspace/aiforge run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aiforge", "run", "build" ]
+publicDir = "artifacts/aiforge/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18570"
+BASE_PATH = "/"

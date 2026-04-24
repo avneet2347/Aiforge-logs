@@ -1,27 +1,47 @@
-# Workspace
+# AIForge Technical Suite
 
-## Overview
+AI-powered log intelligence and observability dashboard built as a data-visualization artifact in the Replit pnpm monorepo.
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+## Architecture
 
-## Stack
+- **Monorepo**: pnpm workspace with shared `lib/api-spec` (OpenAPI), `lib/api-zod` (Zod schemas), and `lib/api-client-react` (Orval-generated React Query hooks).
+- **API server** (`artifacts/api-server`): Express 5 + TypeScript serving 16 endpoints under `/api/*`. All data is deterministic synthetic (mulberry32 PRNG) — no database.
+- **Frontend** (`artifacts/aiforge`): React + Vite + Tailwind v4 + shadcn/ui + Recharts + wouter routing. All pages call generated React Query hooks from `@workspace/api-client-react`.
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+## Routes / Pages
 
-## Key Commands
+| Path | Page | Backend hooks |
+|---|---|---|
+| `/` | Operational overview | summary, log-volume, anomaly-trend, mttd-trend, severity-distribution, top-services, ingest-throughput |
+| `/anomalies` | Detected anomalies stream | listAnomalies + filters |
+| `/patterns` | K-Means/BERT pattern cards | listPatterns |
+| `/alerts` | Intelligent alerts + drawer with root cause | listAlerts, getAlert |
+| `/predictions` | Prophet failure forecasts | listPredictions |
+| `/services` | Service health grid | listServices |
+| `/logs` | Interactive log explorer | listLogs (level, service, search, limit) |
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+## Dashboard Features
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+- Auto-refresh (15s interval) toggle, manual refresh, Print/PDF export.
+- Dark mode toggle (defaults to dark, persisted in localStorage).
+- CSV export on every chart and list (react-csv).
+- Skeleton loading states while React Query fetches.
+- Print stylesheet hides chrome and forces light theme for PDF export.
+- All Recharts components have `isAnimationActive={false}` to avoid animation-related render glitches with frequent refreshes.
+
+## Synthetic Data
+
+`artifacts/api-server/src/lib/aiforgeData.ts` implements a deterministic generator:
+- 12 services with realistic names (auth-service, checkout-api, payments-gateway, etc.).
+- Diurnal log volume patterns over the last 24h.
+- Anomalies tagged with algorithm (Isolation Forest, K-Means cluster shift, BERT semantic delta, Prophet residual).
+- Alert detail includes root cause hop chain and related logs.
+- Predictions include forecast points with confidence bands (actual + forecast + upper/lower).
+
+## Codegen
+
+After editing `lib/api-spec/openapi.yaml`, run:
+```
+pnpm --filter @workspace/api-spec run codegen
+```
+to regenerate Zod schemas (`lib/api-zod`) and React Query hooks (`lib/api-client-react`).

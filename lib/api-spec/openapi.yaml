@@ -3,13 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AIForge Technical Suite — AI-powered log intelligence and observability platform
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Aggregated dashboard metrics and time series
+  - name: logs
+    description: Raw log stream and search
+  - name: anomalies
+    description: Anomaly detection results (Isolation Forest)
+  - name: patterns
+    description: Discovered log patterns and clusters
+  - name: alerts
+    description: Intelligent alerts
+  - name: predictions
+    description: Predictive failure forecasts (Prophet)
+  - name: services
+    description: Monitored services
 paths:
   /healthz:
     get:
@@ -24,6 +38,284 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Headline KPIs for the AIForge dashboard
+      responses:
+        "200":
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/log-volume:
+    get:
+      operationId: getLogVolumeTimeseries
+      tags: [dashboard]
+      summary: Log volume per minute over the trailing window, broken down by severity
+      parameters:
+        - name: window
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["1h", "6h", "24h", "7d"]
+            default: "24h"
+      responses:
+        "200":
+          description: Stacked time series
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LogVolumePoint"
+
+  /dashboard/anomaly-trend:
+    get:
+      operationId: getAnomalyTrend
+      tags: [dashboard]
+      summary: Hourly anomaly score trend with confidence band
+      responses:
+        "200":
+          description: Anomaly score trend
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnomalyTrendPoint"
+
+  /dashboard/mttd-trend:
+    get:
+      operationId: getMttdTrend
+      tags: [dashboard]
+      summary: Mean Time To Detection trend by week, with baseline comparison
+      responses:
+        "200":
+          description: MTTD weekly trend
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MttdPoint"
+
+  /dashboard/severity-distribution:
+    get:
+      operationId: getSeverityDistribution
+      tags: [dashboard]
+      summary: Distribution of log volume across severity levels
+      responses:
+        "200":
+          description: Severity distribution
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SeveritySlice"
+
+  /dashboard/top-services:
+    get:
+      operationId: getTopServicesByErrors
+      tags: [dashboard]
+      summary: Top services ranked by error volume in the last 24h
+      responses:
+        "200":
+          description: Top services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceErrorRank"
+
+  /dashboard/ingest-throughput:
+    get:
+      operationId: getIngestThroughput
+      tags: [dashboard]
+      summary: Real-time log ingestion throughput (events/sec) over the last 60 minutes
+      responses:
+        "200":
+          description: Ingest throughput
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ThroughputPoint"
+
+  /logs:
+    get:
+      operationId: listLogs
+      tags: [logs]
+      summary: List raw log events with filtering
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["all", "debug", "info", "warn", "error", "fatal"]
+            default: "all"
+        - name: service
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Log list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LogEvent"
+
+  /anomalies:
+    get:
+      operationId: listAnomalies
+      tags: [anomalies]
+      summary: List detected anomalies (Isolation Forest)
+      responses:
+        "200":
+          description: Anomaly list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Anomaly"
+
+  /anomalies/{id}:
+    get:
+      operationId: getAnomaly
+      tags: [anomalies]
+      summary: Get a single anomaly with sample log lines
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Anomaly detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnomalyDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /patterns:
+    get:
+      operationId: listPatterns
+      tags: [patterns]
+      summary: List automatically discovered log patterns and clusters
+      responses:
+        "200":
+          description: Pattern list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LogPattern"
+
+  /alerts:
+    get:
+      operationId: listAlerts
+      tags: [alerts]
+      summary: List intelligent alerts
+      responses:
+        "200":
+          description: Alert list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+
+  /alerts/{id}:
+    get:
+      operationId: getAlert
+      tags: [alerts]
+      summary: Get an alert with root cause analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alert detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /predictions:
+    get:
+      operationId: listPredictions
+      tags: [predictions]
+      summary: List predictive failure forecasts
+      responses:
+        "200":
+          description: Predictions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prediction"
+
+  /services:
+    get:
+      operationId: listServices
+      tags: [services]
+      summary: List monitored services with health status
+      responses:
+        "200":
+          description: Service list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Service"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +323,400 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    DashboardSummary:
+      type: object
+      properties:
+        logsIngested24h:
+          type: integer
+        logsPerSecond:
+          type: number
+        anomaliesDetected24h:
+          type: integer
+        activeAlerts:
+          type: integer
+        criticalAlerts:
+          type: integer
+        servicesMonitored:
+          type: integer
+        servicesHealthy:
+          type: integer
+        servicesDegraded:
+          type: integer
+        servicesDown:
+          type: integer
+        mttdMinutes:
+          type: number
+        mttdReductionPct:
+          type: number
+        falsePositiveRate:
+          type: number
+        falsePositiveReductionPct:
+          type: number
+        engineerHoursSavedWeekly:
+          type: number
+        patternsDiscovered:
+          type: integer
+        predictiveIssuesIdentified:
+          type: integer
+      required:
+        - logsIngested24h
+        - logsPerSecond
+        - anomaliesDetected24h
+        - activeAlerts
+        - criticalAlerts
+        - servicesMonitored
+        - servicesHealthy
+        - servicesDegraded
+        - servicesDown
+        - mttdMinutes
+        - mttdReductionPct
+        - falsePositiveRate
+        - falsePositiveReductionPct
+        - engineerHoursSavedWeekly
+        - patternsDiscovered
+        - predictiveIssuesIdentified
+
+    LogVolumePoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        debug:
+          type: integer
+        info:
+          type: integer
+        warn:
+          type: integer
+        error:
+          type: integer
+        fatal:
+          type: integer
+      required: [timestamp, debug, info, warn, error, fatal]
+
+    AnomalyTrendPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        score:
+          type: number
+        upperBound:
+          type: number
+        lowerBound:
+          type: number
+        threshold:
+          type: number
+      required: [timestamp, score, upperBound, lowerBound, threshold]
+
+    MttdPoint:
+      type: object
+      properties:
+        week:
+          type: string
+        mttdMinutes:
+          type: number
+        baselineMinutes:
+          type: number
+      required: [week, mttdMinutes, baselineMinutes]
+
+    SeveritySlice:
+      type: object
+      properties:
+        level:
+          type: string
+        count:
+          type: integer
+        percentage:
+          type: number
+      required: [level, count, percentage]
+
+    ServiceErrorRank:
+      type: object
+      properties:
+        service:
+          type: string
+        errors:
+          type: integer
+        warnings:
+          type: integer
+        deltaPct:
+          type: number
+      required: [service, errors, warnings, deltaPct]
+
+    ThroughputPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        eventsPerSecond:
+          type: number
+      required: [timestamp, eventsPerSecond]
+
+    LogEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [debug, info, warn, error, fatal]
+        service:
+          type: string
+        host:
+          type: string
+        traceId:
+          type: string
+        message:
+          type: string
+        anomalyScore:
+          type: number
+      required: [id, timestamp, level, service, host, traceId, message, anomalyScore]
+
+    Anomaly:
+      type: object
+      properties:
+        id:
+          type: string
+        detectedAt:
+          type: string
+          format: date-time
+        service:
+          type: string
+        signature:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        anomalyScore:
+          type: number
+        affectedRequests:
+          type: integer
+        status:
+          type: string
+          enum: [open, acknowledged, resolved]
+        algorithm:
+          type: string
+      required:
+        - id
+        - detectedAt
+        - service
+        - signature
+        - severity
+        - anomalyScore
+        - affectedRequests
+        - status
+        - algorithm
+
+    AnomalyDetail:
+      type: object
+      properties:
+        anomaly:
+          $ref: "#/components/schemas/Anomaly"
+        sampleLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogEvent"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnomalyTrendPoint"
+      required: [anomaly, sampleLogs, timeline]
+
+    LogPattern:
+      type: object
+      properties:
+        id:
+          type: string
+        template:
+          type: string
+        cluster:
+          type: string
+        occurrences:
+          type: integer
+        services:
+          type: array
+          items:
+            type: string
+        firstSeen:
+          type: string
+          format: date-time
+        lastSeen:
+          type: string
+          format: date-time
+        trendPct:
+          type: number
+        confidence:
+          type: number
+      required:
+        - id
+        - template
+        - cluster
+        - occurrences
+        - services
+        - firstSeen
+        - lastSeen
+        - trendPct
+        - confidence
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        triggeredAt:
+          type: string
+          format: date-time
+        title:
+          type: string
+        service:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [active, acknowledged, resolved]
+        affectedUsers:
+          type: integer
+        suggestedAction:
+          type: string
+        confidence:
+          type: number
+      required:
+        - id
+        - triggeredAt
+        - title
+        - service
+        - severity
+        - status
+        - affectedUsers
+        - suggestedAction
+        - confidence
+
+    RootCauseHop:
+      type: object
+      properties:
+        service:
+          type: string
+        component:
+          type: string
+        evidence:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required: [service, component, evidence, timestamp]
+
+    AlertDetail:
+      type: object
+      properties:
+        alert:
+          $ref: "#/components/schemas/Alert"
+        rootCause:
+          type: array
+          items:
+            $ref: "#/components/schemas/RootCauseHop"
+        relatedLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogEvent"
+      required: [alert, rootCause, relatedLogs]
+
+    Prediction:
+      type: object
+      properties:
+        id:
+          type: string
+        service:
+          type: string
+        component:
+          type: string
+        predictedFailureAt:
+          type: string
+          format: date-time
+        leadTimeMinutes:
+          type: integer
+        confidence:
+          type: number
+        signal:
+          type: string
+        recommendedAction:
+          type: string
+        forecast:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastPoint"
+      required:
+        - id
+        - service
+        - component
+        - predictedFailureAt
+        - leadTimeMinutes
+        - confidence
+        - signal
+        - recommendedAction
+        - forecast
+
+    ForecastPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        actual:
+          type: ["number", "null"]
+        forecast:
+          type: number
+        upperBound:
+          type: number
+        lowerBound:
+          type: number
+      required: [timestamp, actual, forecast, upperBound, lowerBound]
+
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        environment:
+          type: string
+        status:
+          type: string
+          enum: [healthy, degraded, down]
+        instances:
+          type: integer
+        errorRate:
+          type: number
+        p95LatencyMs:
+          type: number
+        logsPerMinute:
+          type: integer
+        openAlerts:
+          type: integer
+      required:
+        - id
+        - name
+        - environment
+        - status
+        - instances
+        - errorRate
+        - p95LatencyMs
+        - logsPerMinute
+        - openAlerts
