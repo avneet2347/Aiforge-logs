@@ -282,6 +282,41 @@ export const GetAlertResponse = zod.object({
 });
 
 /**
+ * @summary Get incident-response runbook + postmortem draft for an alert
+ */
+export const GetAlertRunbookParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetAlertRunbookResponse = zod.object({
+  alertId: zod.string(),
+  title: zod.string(),
+  generatedAt: zod.coerce.date(),
+  estimatedMinutes: zod.number(),
+  confidence: zod.number(),
+  steps: zod.array(
+    zod.object({
+      id: zod.string(),
+      order: zod.number(),
+      kind: zod.enum([
+        "check",
+        "command",
+        "decision",
+        "fix",
+        "verify",
+        "communicate",
+      ]),
+      title: zod.string(),
+      description: zod.string(),
+      command: zod.string().nullish(),
+      expectedOutcome: zod.string(),
+      estimatedMinutes: zod.number(),
+    }),
+  ),
+  postmortem: zod.string().describe("Markdown-formatted postmortem draft"),
+});
+
+/**
  * @summary List predictive failure forecasts
  */
 export const ListPredictionsResponseItem = zod.object({

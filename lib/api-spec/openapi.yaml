@@ -286,6 +286,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /alerts/{id}/runbook:
+    get:
+      operationId: getAlertRunbook
+      tags: [alerts]
+      summary: Get incident-response runbook + postmortem draft for an alert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Runbook with steps and postmortem markdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Runbook"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /predictions:
     get:
       operationId: listPredictions
@@ -636,6 +661,52 @@ components:
           items:
             $ref: "#/components/schemas/LogEvent"
       required: [alert, rootCause, relatedLogs]
+
+    RunbookStep:
+      type: object
+      properties:
+        id:
+          type: string
+        order:
+          type: integer
+        kind:
+          type: string
+          enum: [check, command, decision, fix, verify, communicate]
+        title:
+          type: string
+        description:
+          type: string
+        command:
+          type: string
+          nullable: true
+        expectedOutcome:
+          type: string
+        estimatedMinutes:
+          type: integer
+      required: [id, order, kind, title, description, expectedOutcome, estimatedMinutes]
+
+    Runbook:
+      type: object
+      properties:
+        alertId:
+          type: string
+        title:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        estimatedMinutes:
+          type: integer
+        confidence:
+          type: number
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunbookStep"
+        postmortem:
+          type: string
+          description: Markdown-formatted postmortem draft
+      required: [alertId, title, generatedAt, estimatedMinutes, confidence, steps, postmortem]
 
     Prediction:
       type: object

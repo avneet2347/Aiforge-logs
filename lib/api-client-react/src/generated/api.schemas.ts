@@ -184,6 +184,40 @@ export interface AlertDetail {
   relatedLogs: LogEvent[];
 }
 
+export type RunbookStepKind =
+  (typeof RunbookStepKind)[keyof typeof RunbookStepKind];
+
+export const RunbookStepKind = {
+  check: "check",
+  command: "command",
+  decision: "decision",
+  fix: "fix",
+  verify: "verify",
+  communicate: "communicate",
+} as const;
+
+export interface RunbookStep {
+  id: string;
+  order: number;
+  kind: RunbookStepKind;
+  title: string;
+  description: string;
+  command?: string | null;
+  expectedOutcome: string;
+  estimatedMinutes: number;
+}
+
+export interface Runbook {
+  alertId: string;
+  title: string;
+  generatedAt: string;
+  estimatedMinutes: number;
+  confidence: number;
+  steps: RunbookStep[];
+  /** Markdown-formatted postmortem draft */
+  postmortem: string;
+}
+
 export interface ForecastPoint {
   timestamp: string;
   /** @nullable */

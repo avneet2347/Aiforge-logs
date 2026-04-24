@@ -913,3 +913,300 @@ export function listServices(): Service[] {
     };
   });
 }
+
+interface RunbookStep {
+  id: string;
+  order: number;
+  kind: "check" | "command" | "decision" | "fix" | "verify" | "communicate";
+  title: string;
+  description: string;
+  command?: string | null;
+  expectedOutcome: string;
+  estimatedMinutes: number;
+}
+
+interface Runbook {
+  alertId: string;
+  title: string;
+  generatedAt: string;
+  estimatedMinutes: number;
+  confidence: number;
+  steps: RunbookStep[];
+  postmortem: string;
+}
+
+const RUNBOOK_TEMPLATES: Record<
+  string,
+  Omit<RunbookStep, "id" | "order" | "estimatedMinutes">[]
+> = {
+  latency: [
+    {
+      kind: "check",
+      title: "Confirm symptom in observability dashboard",
+      description:
+        "Open the service overview and verify the p99 spike correlates with the timestamp in the alert. Look for downstream amplification.",
+      expectedOutcome: "p99 elevated across at least 3 consecutive 1-min buckets.",
+    },
+    {
+      kind: "command",
+      title: "Pull current pod-level latency histogram",
+      description: "Identify whether the regression is pod-localised or fleet-wide.",
+      command:
+        "kubectl exec -n {NAMESPACE} deploy/{SERVICE} -- curl -s http://localhost:9090/metrics | grep http_request_duration_seconds",
+      expectedOutcome: "Two or more pods showing >1s p95.",
+    },
+    {
+      kind: "decision",
+      title: "Determine blast radius",
+      description:
+        "If <30% of pods affected, isolate the noisy pods. Otherwise treat as fleet-wide regression.",
+      expectedOutcome: "Decision recorded in incident channel.",
+    },
+    {
+      kind: "fix",
+      title: "Drain affected pods and trigger autoscaler",
+      description:
+        "Cordon impacted nodes and scale the deployment by +25% to absorb load while replacements roll out.",
+      command:
+        "kubectl cordon {NODE} && kubectl scale deploy/{SERVICE} --replicas=$(($(kubectl get deploy/{SERVICE} -o jsonpath='{.spec.replicas}')+3))",
+      expectedOutcome: "New pods Ready within 90s, p99 trends down.",
+    },
+    {
+      kind: "verify",
+      title: "Validate recovery via SLO burn rate",
+      description: "Confirm fast-burn rate has stopped accruing for at least 5 minutes.",
+      expectedOutcome: "Burn rate < 1.0 sustained.",
+    },
+    {
+      kind: "communicate",
+      title: "Post status update to #incidents",
+      description: "Summarise impact window, mitigation, and follow-up owner.",
+      expectedOutcome: "Stakeholders acknowledged.",
+    },
+  ],
+  errors: [
+    {
+      kind: "check",
+      title: "Inspect error fingerprint and stacktrace",
+      description:
+        "Open the related logs panel — confirm the cluster signature matches a known regression or new code path.",
+      expectedOutcome: "Single dominant fingerprint identified.",
+    },
+    {
+      kind: "command",
+      title: "Diff most recent deploy SHAs",
+      description: "Determine if the surge correlates with a recent rollout window.",
+      command: "argocd app diff {SERVICE} --revision HEAD~1",
+      expectedOutcome: "List of changed files since last good revision.",
+    },
+    {
+      kind: "decision",
+      title: "Roll back vs. forward-fix",
+      description:
+        "If the change is small and reversible, prefer rollback. Otherwise hotfix on top.",
+      expectedOutcome: "Path chosen and announced.",
+    },
+    {
+      kind: "fix",
+      title: "Trigger rollback to last known good revision",
+      description: "Use the GitOps controller to pin the previous revision.",
+      command: "argocd app rollback {SERVICE} {LAST_GOOD_REV}",
+      expectedOutcome: "Deployment back to baseline within 3 minutes.",
+    },
+    {
+      kind: "verify",
+      title: "Watch error rate normalise",
+      description: "Errors/min should drop below baseline + 2σ within 5 minutes.",
+      expectedOutcome: "Confirmed below threshold.",
+    },
+    {
+      kind: "communicate",
+      title: "File postmortem ticket and link evidence",
+      description: "Capture timeline, root cause, action items.",
+      expectedOutcome: "Ticket created with owner.",
+    },
+  ],
+  capacity: [
+    {
+      kind: "check",
+      title: "Validate predicted exhaustion timeline",
+      description:
+        "Cross-reference the Prophet forecast with current rate of change. Confirm the lead time before saturation.",
+      expectedOutcome: "Forecast within ±15% of measured trajectory.",
+    },
+    {
+      kind: "command",
+      title: "Inspect current resource utilisation",
+      description: "Capture instantaneous values for capacity planning evidence.",
+      command: "kubectl top pods -n {NAMESPACE} -l app={SERVICE} --sort-by=memory",
+      expectedOutcome: "Top consumers identified.",
+    },
+    {
+      kind: "fix",
+      title: "Pre-emptively scale or rotate",
+      description:
+        "Provision additional capacity, rotate caches, or shed non-critical load before saturation.",
+      command: "kubectl scale deploy/{SERVICE} --replicas=+2",
+      expectedOutcome: "Headroom > 40% restored.",
+    },
+    {
+      kind: "verify",
+      title: "Re-run forecast against updated baseline",
+      description:
+        "Confirm the new forecast no longer crosses the red-zone threshold within the SLA window.",
+      expectedOutcome: "Forecast clear for next 24h.",
+    },
+    {
+      kind: "communicate",
+      title: "File capacity-planning task for the owning team",
+      description:
+        "Move from reactive scale-out to long-term provisioning plan.",
+      expectedOutcome: "Backlog item created.",
+    },
+  ],
+  auth: [
+    {
+      kind: "check",
+      title: "Inspect authentication failure clusters",
+      description:
+        "Identify whether failures originate from a single ASN, IP range, or a legitimate client cohort.",
+      expectedOutcome: "Failure source classified (attack vs. config drift).",
+    },
+    {
+      kind: "command",
+      title: "Pull recent JWT validation traces",
+      description: "Surface the validation error code distribution.",
+      command: "logcli query '{service=\"auth-service\"} |= \"validation_failed\"' --limit=100",
+      expectedOutcome: "Error code mix visible.",
+    },
+    {
+      kind: "decision",
+      title: "Block, throttle, or rotate keys",
+      description:
+        "Decide based on attack signature whether to apply WAF rule, rate-limit, or rotate signing keys.",
+      expectedOutcome: "Mitigation strategy chosen.",
+    },
+    {
+      kind: "fix",
+      title: "Apply chosen mitigation",
+      description: "Roll out WAF rule or trigger key rotation pipeline.",
+      command: "make rotate-jwt-keys ENV=prod",
+      expectedOutcome: "Failures drop within 2 minutes.",
+    },
+    {
+      kind: "verify",
+      title: "Confirm legitimate clients unaffected",
+      description: "Spot-check success rate for known good tenants.",
+      expectedOutcome: "Success rate > 99.9% for control group.",
+    },
+    {
+      kind: "communicate",
+      title: "Notify security on-call",
+      description: "Hand over evidence package for forensic follow-up.",
+      expectedOutcome: "Security ticket opened.",
+    },
+  ],
+};
+
+function classifyAlert(title: string): keyof typeof RUNBOOK_TEMPLATES {
+  const t = title.toLowerCase();
+  if (/jwt|auth|login|token/.test(t)) return "auth";
+  if (/disk|memory|cpu|capacity|exhaustion|queue depth/.test(t)) return "capacity";
+  if (/latency|slow|p9\d|timeout/.test(t)) return "latency";
+  return "errors";
+}
+
+export function buildRunbook(alertId: string): Runbook | undefined {
+  const detail = buildAlertDetail(alertId);
+  if (!detail) return undefined;
+  const { alert, rootCause } = detail;
+
+  const category = classifyAlert(alert.title);
+  const template = RUNBOOK_TEMPLATES[category];
+  const rand = mulberry32(hashSeed(alertId + ":runbook"));
+
+  const primaryService = rootCause[0]?.service ?? alert.service;
+  const namespace =
+    primaryService.includes("-")
+      ? primaryService.split("-")[0]
+      : "default";
+  const node = `k8s-prod-node-${randInt(rand, 1, 24)}`;
+  const lastGoodRev = `v2.${randInt(rand, 30, 80)}.${randInt(rand, 0, 9)}`;
+
+  const steps: RunbookStep[] = template.map((s, i) => ({
+    id: `${alertId}-step-${i + 1}`,
+    order: i + 1,
+    kind: s.kind,
+    title: s.title,
+    description: s.description,
+    command:
+      s.command
+        ?.replaceAll("{SERVICE}", primaryService)
+        .replaceAll("{NAMESPACE}", namespace)
+        .replaceAll("{NODE}", node)
+        .replaceAll("{LAST_GOOD_REV}", lastGoodRev) ?? null,
+    expectedOutcome: s.expectedOutcome,
+    estimatedMinutes: randInt(rand, 2, 9),
+  }));
+
+  const totalMinutes = steps.reduce((s, x) => s + x.estimatedMinutes, 0);
+  const confidence = Number((0.78 + (rand() * 0.18)).toFixed(2));
+
+  const triggered = new Date(alert.triggeredAt);
+  const detected = new Date(triggered.getTime() + 60_000);
+  const mitigated = new Date(triggered.getTime() + totalMinutes * 60_000);
+  const fmt = (d: Date) => d.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+
+  const postmortem = [
+    `# Postmortem · ${alert.title}`,
+    "",
+    `**Alert ID:** ${alert.id}  `,
+    `**Severity:** ${alert.severity.toUpperCase()}  `,
+    `**Service:** ${alert.service}  `,
+    `**Status:** ${alert.status}  `,
+    `**Detection method:** AIForge anomaly engine (${(alert.confidence * 100).toFixed(0)}% confidence)`,
+    "",
+    "## Impact",
+    "",
+    `Approximately **${alert.affectedUsers.toLocaleString()} users** were impacted between detection and mitigation.`,
+    "",
+    "## Timeline",
+    "",
+    `- **${fmt(triggered)}** — Anomaly detected by ${rootCause[0]?.component ?? "primary detector"}.`,
+    `- **${fmt(detected)}** — Alert routed to on-call; runbook auto-generated.`,
+    ...rootCause.slice(0, 3).map(
+      (h, i) =>
+        `- **${fmt(new Date(h.timestamp))}** — Hop ${i + 1}: \`${h.service}\` (${h.component}) — ${h.evidence}`,
+    ),
+    `- **${fmt(mitigated)}** — Mitigation completed via runbook execution.`,
+    "",
+    "## Root cause",
+    "",
+    rootCause.map((h) => `- \`${h.service}\` → ${h.component}: ${h.evidence}`).join("\n"),
+    "",
+    "## Resolution",
+    "",
+    alert.suggestedAction,
+    "",
+    "## Action items",
+    "",
+    "- [ ] Add regression test covering the failure mode above.",
+    "- [ ] Tighten the alert threshold to reduce time-to-detect by an additional 30s.",
+    "- [ ] Review on-call rotation handoff for this service.",
+    "- [ ] Update the runbook template based on what was actually executed.",
+    "",
+    "## Lessons learned",
+    "",
+    `Drafted automatically by AIForge on ${fmt(new Date())}.`,
+  ].join("\n");
+
+  return {
+    alertId,
+    title: `Runbook · ${alert.title}`,
+    generatedAt: new Date().toISOString(),
+    estimatedMinutes: totalMinutes,
+    confidence,
+    steps,
+    postmortem,
+  };
+}

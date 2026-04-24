@@ -29,6 +29,7 @@ import type {
   LogVolumePoint,
   MttdPoint,
   Prediction,
+  Runbook,
   Service,
   ServiceErrorRank,
   SeveritySlice,
@@ -1153,6 +1154,93 @@ export function useGetAlert<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAlertQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get incident-response runbook + postmortem draft for an alert
+ */
+export const getGetAlertRunbookUrl = (id: string) => {
+  return `/api/alerts/${id}/runbook`;
+};
+
+export const getAlertRunbook = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Runbook> => {
+  return customFetch<Runbook>(getGetAlertRunbookUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAlertRunbookQueryKey = (id: string) => {
+  return [`/api/alerts/${id}/runbook`] as const;
+};
+
+export const getGetAlertRunbookQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAlertRunbook>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAlertRunbook>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAlertRunbookQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlertRunbook>>> = ({
+    signal,
+  }) => getAlertRunbook(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAlertRunbook>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAlertRunbookQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAlertRunbook>>
+>;
+export type GetAlertRunbookQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get incident-response runbook + postmortem draft for an alert
+ */
+
+export function useGetAlertRunbook<
+  TData = Awaited<ReturnType<typeof getAlertRunbook>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAlertRunbook>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAlertRunbookQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
